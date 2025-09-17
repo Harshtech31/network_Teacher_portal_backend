@@ -92,4 +92,126 @@ router.post('/', [
   }
 });
 
+/**
+ * @route   GET /api/events/:id
+ * @desc    Get single event by ID
+ * @access  Public
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { event }
+    });
+  } catch (error) {
+    console.error('Get event error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch event',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   PUT /api/events/:id
+ * @desc    Update event by ID
+ * @access  Public
+ */
+router.put('/:id', [
+  body('title').optional().notEmpty().withMessage('Title cannot be empty'),
+  body('description').optional().notEmpty().withMessage('Description cannot be empty'),
+  body('eventDate').optional().isISO8601().withMessage('Valid event date is required'),
+  body('category').optional().notEmpty().withMessage('Category cannot be empty')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const event = await Event.findByPk(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found'
+      });
+    }
+
+    // Map frontend fields to database fields
+    const updateData = {};
+    if (req.body.title) updateData.title = req.body.title;
+    if (req.body.description) updateData.description = req.body.description;
+    if (req.body.category) updateData.eventType = req.body.category;
+    if (req.body.eventDate) updateData.startDate = req.body.eventDate;
+    if (req.body.eventDate) updateData.endDate = req.body.eventDate;
+    if (req.body.location) updateData.location = req.body.location;
+    if (req.body.maxParticipants !== undefined) updateData.maxParticipants = req.body.maxParticipants;
+    if (req.body.registrationRequired !== undefined) updateData.registrationRequired = req.body.registrationRequired;
+    if (req.body.isPublic !== undefined) updateData.isPublic = req.body.isPublic;
+    if (req.body.tags) updateData.tags = req.body.tags;
+
+    await event.update(updateData);
+
+    res.json({
+      success: true,
+      message: 'Event updated successfully',
+      data: { event }
+    });
+  } catch (error) {
+    console.error('Update event error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update event',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   DELETE /api/events/:id
+ * @desc    Delete event by ID
+ * @access  Public
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found'
+      });
+    }
+
+    await event.destroy();
+
+    res.json({
+      success: true,
+      message: 'Event deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete event',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
