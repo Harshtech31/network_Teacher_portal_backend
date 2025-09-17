@@ -11,6 +11,7 @@ const User = sequelize.define('User', {
   firstName: {
     type: DataTypes.STRING(50),
     allowNull: false,
+    field: 'first_name', // Map to snake_case column
     validate: {
       notEmpty: { msg: 'First name is required' },
       len: { args: [1, 50], msg: 'First name must be 1-50 characters' }
@@ -19,6 +20,7 @@ const User = sequelize.define('User', {
   lastName: {
     type: DataTypes.STRING(50),
     allowNull: false,
+    field: 'last_name', // Map to snake_case column
     validate: {
       notEmpty: { msg: 'Last name is required' },
       len: { args: [1, 50], msg: 'Last name must be 1-50 characters' }
@@ -65,26 +67,32 @@ const User = sequelize.define('User', {
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isVerified: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    defaultValue: false,
+    field: 'is_verified'
   },
   verificationToken: {
     type: DataTypes.STRING(255),
-    allowNull: true
+    allowNull: true,
+    field: 'verification_token'
   },
   resetPasswordToken: {
     type: DataTypes.STRING(255),
-    allowNull: true
+    allowNull: true,
+    field: 'reset_password_token'
   },
   resetPasswordExpires: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
+    field: 'reset_password_expires'
   },
   lastLogin: {
     type: DataTypes.DATE,
+    field: 'last_login',
     allowNull: true
   }
 }, {
