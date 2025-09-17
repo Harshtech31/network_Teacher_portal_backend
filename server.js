@@ -1,11 +1,16 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+
+// Import database configuration
+const { sequelize, testConnection, syncDatabase } = require('./config/database');
+
+// Import models to ensure they're registered
+const { User, Event, EventRegistration, Announcement } = require('./models');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,23 +41,35 @@ app.use(morgan('combined'));
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
-    status: 'OK',
+    status: 'healthy',
     service: 'BITS Pilani Teacher Portal Backend',
+    database: 'PostgreSQL',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const teacherRoutes = require('./routes/teachers');
-const eventRoutes = require('./routes/events');
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'BITS Teacher Portal Backend API',
+    status: 'running',
+    database: 'PostgreSQL',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/teachers', teacherRoutes);
-app.use('/api/events', eventRoutes);
+// Import routes (uncomment when routes are available)
+// const authRoutes = require('./routes/auth');
+// const teacherRoutes = require('./routes/teachers');
+// const eventRoutes = require('./routes/events');
+
+// API Routes (uncomment when routes are available)
+// app.use('/api/auth', authRoutes);
+// app.use('/api/teachers', teacherRoutes);
+// app.use('/api/events', eventRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -66,7 +83,7 @@ app.use('*', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   
-  if (err.name === 'ValidationError') {
+  if (err.name === 'SequelizeValidationError') {
     return res.status(400).json({
       error: 'Validation Error',
       message: err.message,
@@ -74,10 +91,17 @@ app.use((err, req, res, next) => {
     });
   }
   
-  if (err.name === 'CastError') {
+  if (err.name === 'SequelizeForeignKeyConstraintError') {
     return res.status(400).json({
-      error: 'Invalid ID',
-      message: 'Invalid resource ID format'
+      error: 'Foreign Key Constraint Error',
+      message: 'Referenced record does not exist'
+    });
+  }
+  
+  if (err.name === 'SequelizeUniqueConstraintError') {
+    return res.status(409).json({
+      error: 'Unique Constraint Error',
+      message: 'Record with this value already exists'
     });
   }
   
@@ -90,17 +114,23 @@ app.use((err, req, res, next) => {
 // Database connection and server start
 const startServer = async () => {
   try {
-    // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/teacher_portal', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('✅ Connected to MongoDB');
+    // Test database connection
+    console.log('🔍 Testing PostgreSQL connection...');
+    const isConnected = await testConnection();
+    
+    if (!isConnected) {
+      throw new Error('Database connection failed');
+    }
+
+    // Sync database models
+    console.log('🔄 Synchronizing database models...');
+    await syncDatabase();
     
     app.listen(PORT, () => {
       console.log(`🚀 Teacher Portal Backend running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔗 API base URL: http://localhost:${PORT}/api`);
+      console.log(`🗄️ Database: PostgreSQL`);
       console.log(`🎓 BITS Pilani Dubai Teacher Portal`);
     });
   } catch (error) {
@@ -111,14 +141,14 @@ const startServer = async () => {
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  await mongoose.connection.close();
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  await sequelize.close();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully');
-  await mongoose.connection.close();
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  await sequelize.close();
   process.exit(0);
 });
 

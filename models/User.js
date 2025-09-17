@@ -1,95 +1,138 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Name is required'],
-    trim: true,
-    maxlength: [100, 'Name cannot exceed 100 characters']
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  firstName: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'First name is required' },
+      len: { args: [1, 50], msg: 'First name must be 1-50 characters' }
+    }
+  },
+  lastName: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'Last name is required' },
+      len: { args: [1, 50], msg: 'Last name must be 1-50 characters' }
+    }
   },
   email: {
-    type: String,
-    required: [true, 'Email is required'],
+    type: DataTypes.STRING(255),
+    allowNull: false,
     unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    validate: {
+      isEmail: { msg: 'Please enter a valid email' },
+      notEmpty: { msg: 'Email is required' }
+    },
+    set(value) {
+      this.setDataValue('email', value.toLowerCase().trim());
+    }
   },
   password: {
-    type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    validate: {
+      len: { args: [6, 255], msg: 'Password must be at least 6 characters' }
+    }
   },
   role: {
-    type: String,
-    enum: ['teacher', 'admin'],
-    default: 'teacher'
+    type: DataTypes.ENUM('teacher', 'admin'),
+    defaultValue: 'teacher'
   },
   department: {
-    type: String,
-    trim: true
+    type: DataTypes.STRING(100),
+    allowNull: true
   },
   designation: {
-    type: String,
-    trim: true
+    type: DataTypes.STRING(100),
+    allowNull: true
   },
   campus: {
-    type: String,
-    enum: ['dubai', 'pilani', 'goa', 'hyderabad'],
-    default: 'dubai'
+    type: DataTypes.ENUM('dubai', 'pilani', 'goa', 'hyderabad'),
+    defaultValue: 'dubai'
   },
   phone: {
-    type: String,
-    trim: true
+    type: DataTypes.STRING(20),
+    allowNull: true
   },
   isActive: {
-    type: Boolean,
-    default: true
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  isVerified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  verificationToken: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  resetPasswordToken: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  resetPasswordExpires: {
+    type: DataTypes.DATE,
+    allowNull: true
   },
   lastLogin: {
-    type: Date
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.DATE,
+    allowNull: true
   }
+}, {
+  tableName: 'users',
+  timestamps: true,
+  underscored: true
 });
 
-// Update the updatedAt field before saving
-userSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
+// Hash password before creating/updating
+User.beforeCreate(async (user) => {
+  if (user.password) {
     const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+    user.password = await bcrypt.hash(user.password, salt);
   }
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+User.beforeUpdate(async (user) => {
+  if (user.changed('password')) {
+    const salt = await bcrypt.genSalt(12);
+    user.password = await bcrypt.hash(user.password, salt);
+  }
+});
+
+// Instance methods
+User.prototype.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Remove password from JSON output
-userSchema.methods.toJSON = function() {
-  const userObject = this.toObject();
-  delete userObject.password;
-  return userObject;
+User.prototype.getFullName = function() {
+  return `${this.firstName} ${this.lastName}`;
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Remove password from JSON output
+User.prototype.toJSON = function() {
+  const values = { ...this.get() };
+  delete values.password;
+  delete values.verificationToken;
+  delete values.resetPasswordToken;
+  return values;
+};
+
+// Class methods
+User.findByEmail = function(email) {
+  return this.findOne({ where: { email: email.toLowerCase() } });
+};
+
+User.findActiveUsers = function() {
+  return this.findAll({ where: { isActive: true } });
+};
+
+module.exports = User;
