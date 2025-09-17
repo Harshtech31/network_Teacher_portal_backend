@@ -61,13 +61,11 @@ app.get('/', (req, res) => {
   });
 });
 
-// Import routes
-const authRoutes = require('./routes/auth');
+// Import routes (auth removed)
 const teacherRoutes = require('./routes/teachers');
 const eventRoutes = require('./routes/events');
 
-// API Routes
-app.use('/api/auth', authRoutes);
+// API Routes (no auth required)
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/events', eventRoutes);
 
