@@ -61,15 +61,15 @@ app.get('/', (req, res) => {
   });
 });
 
-// Import routes (uncomment when routes are available)
-// const authRoutes = require('./routes/auth');
-// const teacherRoutes = require('./routes/teachers');
-// const eventRoutes = require('./routes/events');
+// Import routes
+const authRoutes = require('./routes/auth');
+const teacherRoutes = require('./routes/teachers');
+const eventRoutes = require('./routes/events');
 
-// API Routes (uncomment when routes are available)
-// app.use('/api/auth', authRoutes);
-// app.use('/api/teachers', teacherRoutes);
-// app.use('/api/events', eventRoutes);
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/teachers', teacherRoutes);
+app.use('/api/events', eventRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

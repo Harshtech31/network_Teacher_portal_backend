@@ -1,7 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
+const { User } = require('../models');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -35,8 +36,8 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Find user and include password for comparison
-    const user = await User.findOne({ email }).select('+password');
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
     
     if (!user) {
       return res.status(401).json({
@@ -54,7 +55,7 @@ router.post('/login', [
     }
 
     // Check password
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
@@ -67,10 +68,11 @@ router.post('/login', [
     await user.save();
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     // Remove password from user object
     const userResponse = user.toJSON();
+    delete userResponse.password;
 
     res.json({
       success: true,

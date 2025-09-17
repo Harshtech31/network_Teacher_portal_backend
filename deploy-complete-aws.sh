@@ -106,6 +106,7 @@ fi
 echo -e "${BLUE}🗄️  Creating RDS PostgreSQL Database...${NC}"
 DB_INSTANCE_ID="${APP_NAME}-db"
 
+<<<<<<< HEAD
 # Get the latest available PostgreSQL version
 echo -e "${YELLOW}🔍 Finding available PostgreSQL versions...${NC}"
 POSTGRES_VERSION=$(aws rds describe-db-engine-versions --engine postgres --region $REGION --query 'DBEngineVersions[?contains(EngineVersion, `14.`) || contains(EngineVersion, `15.`) || contains(EngineVersion, `13.`)].EngineVersion' --output text | head -1)
@@ -117,12 +118,18 @@ fi
 
 echo -e "${GREEN}✅ Using PostgreSQL version: $POSTGRES_VERSION${NC}"
 
+=======
+>>>>>>> a0a6186bff30803c58501bcfe91aebfa88b06bad
 if ! aws rds describe-db-instances --db-instance-identifier $DB_INSTANCE_ID --region $REGION &> /dev/null; then
     aws rds create-db-instance \
         --db-instance-identifier $DB_INSTANCE_ID \
         --db-instance-class $DB_INSTANCE_CLASS \
         --engine postgres \
+<<<<<<< HEAD
         --engine-version $POSTGRES_VERSION \
+=======
+        --engine-version 15.4 \
+>>>>>>> a0a6186bff30803c58501bcfe91aebfa88b06bad
         --master-username $DB_USERNAME \
         --master-user-password $DB_PASSWORD \
         --allocated-storage 20 \
