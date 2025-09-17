@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { Event } = require('../models');
+const adminSyncService = require('../services/adminSync');
 
 const router = express.Router();
 
@@ -43,10 +44,11 @@ router.get('/', async (req, res) => {
  */
 router.post('/', [
   body('title').notEmpty().withMessage('Title is required'),
-  body('description').notEmpty().withMessage('Description is required'),
-  body('eventDate').isISO8601().withMessage('Valid event date is required'),
-  body('category').notEmpty().withMessage('Category is required'),
-  body('location').optional().notEmpty().withMessage('Location is required')
+  body('eventLink').isURL().withMessage('Valid event link is required'),
+  body('description').optional().notEmpty().withMessage('Description cannot be empty if provided'),
+  body('eventDate').optional().isISO8601().withMessage('Valid event date is required'),
+  body('category').optional().notEmpty().withMessage('Category cannot be empty if provided'),
+  body('venue').optional().notEmpty().withMessage('Venue cannot be empty if provided')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -61,11 +63,12 @@ router.post('/', [
     // Map frontend fields to database fields
     const eventData = {
       title: req.body.title,
-      description: req.body.description,
-      eventType: req.body.category, // Map category to eventType
-      startDate: req.body.eventDate, // Map eventDate to startDate
-      endDate: req.body.eventDate, // Use same date for end date (can be enhanced later)
-      location: req.body.location || 'BITS Pilani Dubai Campus', // Default location
+      description: req.body.description || 'No description provided',
+      eventType: req.body.category || 'general', // Map category to eventType
+      startDate: req.body.eventDate || new Date().toISOString().split('T')[0], // Default to today if not provided
+      endDate: req.body.eventDate || new Date().toISOString().split('T')[0], // Use same date for end date
+      location: req.body.venue || 'Online/TBD', // Map venue to location
+      eventLink: req.body.eventLink, // Store the event link
       maxParticipants: req.body.maxParticipants || null,
       registrationRequired: req.body.registrationRequired !== false,
       isPublic: req.body.isPublic !== false,
@@ -77,9 +80,18 @@ router.post('/', [
 
     const event = await Event.create(eventData);
 
+    // Send event to admin portal for approval
+    try {
+      await adminSyncService.sendEventToAdmin(event);
+      console.log('✅ Event sent to admin portal for approval');
+    } catch (syncError) {
+      console.error('⚠️ Failed to sync with admin portal:', syncError.message);
+      // Continue anyway - event is still created locally
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Event created successfully',
+      message: 'Event created successfully and sent for admin approval',
       data: { event }
     });
   } catch (error) {

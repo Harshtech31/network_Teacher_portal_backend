@@ -17,41 +17,43 @@ const Event = sequelize.define('Event', {
   },
   description: {
     type: DataTypes.TEXT,
-    allowNull: false,
+    allowNull: true, // Made optional
     validate: {
-      notEmpty: { msg: 'Event description is required' },
-      len: { args: [1, 2000], msg: 'Description cannot exceed 2000 characters' }
+      len: { args: [0, 2000], msg: 'Description cannot exceed 2000 characters' }
     }
   },
   eventType: {
-    type: DataTypes.ENUM('academic', 'cultural', 'sports', 'workshop', 'seminar', 'competition', 'social'),
-    allowNull: false,
-    validate: {
-      notEmpty: { msg: 'Event category is required' }
-    }
+    type: DataTypes.ENUM('academic', 'cultural', 'sports', 'workshop', 'seminar', 'competition', 'social', 'general'),
+    allowNull: true, // Made optional
+    defaultValue: 'general'
   },
   startDate: {
     type: DataTypes.DATE,
-    allowNull: false,
+    allowNull: true, // Made optional
     validate: {
-      notEmpty: { msg: 'Start date is required' },
       isDate: { msg: 'Invalid date format' }
     }
   },
   endDate: {
     type: DataTypes.DATE,
-    allowNull: false,
+    allowNull: true, // Made optional
     validate: {
-      notEmpty: { msg: 'End date is required' },
       isDate: { msg: 'Invalid date format' }
     }
   },
   location: {
     type: DataTypes.STRING(200),
+    allowNull: true, // Made optional (venue)
+    validate: {
+      len: { args: [0, 200], msg: 'Location cannot exceed 200 characters' }
+    }
+  },
+  eventLink: {
+    type: DataTypes.STRING(500),
     allowNull: false,
     validate: {
-      notEmpty: { msg: 'Location is required' },
-      len: { args: [1, 200], msg: 'Location cannot exceed 200 characters' }
+      notEmpty: { msg: 'Event link is required' },
+      isUrl: { msg: 'Event link must be a valid URL' }
     }
   },
   maxParticipants: {
